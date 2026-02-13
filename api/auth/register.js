@@ -23,7 +23,7 @@ function validateRequest(validations) {
           message: error.msg,
           value: error.value
         }));
-        
+
         return res.status(400).json({
           success: false,
           message: 'Errores de validación',
@@ -83,7 +83,7 @@ module.exports = async (req, res) => {
           message: error.msg,
           value: error.value
         }));
-        
+
         return res.status(400).json({
           success: false,
           message: 'Errores de validación',
@@ -98,7 +98,7 @@ module.exports = async (req, res) => {
 
     const result = await AuthService.register(
       { email, password, nombre },
-      { 
+      {
         userAgent: req.headers['user-agent'] || 'Unknown',
         ip: req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown'
       }
@@ -106,14 +106,14 @@ module.exports = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Usuario registrado exitosamente',
+      message: 'Solicitud de acceso enviada. Tu cuenta está pendiente de aprobación por un administrador.',
       data: result,
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
     logger.error('Error en registro', error);
-    
+
     if (error.message === 'EMAIL_ALREADY_EXISTS') {
       return res.status(409).json({
         success: false,
@@ -144,8 +144,8 @@ module.exports = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: process.env.NODE_ENV === 'production' 
-        ? 'Error interno del servidor' 
+      message: process.env.NODE_ENV === 'production'
+        ? 'Error interno del servidor'
         : error.message,
       code: 'INTERNAL_ERROR',
       timestamp: new Date().toISOString()

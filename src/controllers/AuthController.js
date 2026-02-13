@@ -20,9 +20,16 @@ class AuthController {
       .withMessage('Email inválido'),
     body('password')
       .isLength({ min: 8 })
-      .withMessage('La contraseña debe tener al menos 8 caracteres'),
+      .withMessage('La contraseña debe tener al menos 8 caracteres')
+      .matches(/[A-Z]/)
+      .withMessage('La contraseña debe contener al menos una letra mayúscula')
+      .matches(/[a-z]/)
+      .withMessage('La contraseña debe contener al menos una letra minúscula')
+      .matches(/[0-9]/)
+      .withMessage('La contraseña debe contener al menos un número')
+      .matches(/[!@#$%^&*(),.?":{}|<>]/)
+      .withMessage('La contraseña debe contener al menos un carácter especial (!@#$%^&*(),.?":{}|<>)'),
     body('nombre')
-      .optional()
       .trim()
       .isLength({ min: 2, max: 100 })
       .withMessage('El nombre debe tener entre 2 y 100 caracteres')
@@ -89,7 +96,7 @@ class AuthController {
         tokens: result.tokens
       };
 
-      ApiResponse.success(res, response, 'Usuario registrado exitosamente', 201);
+      ApiResponse.success(res, response, 'Solicitud de acceso enviada. Tu cuenta está pendiente de aprobación por un administrador.', 201);
     } catch (error) {
       if (error.message === 'EMAIL_ALREADY_EXISTS') {
         return ApiResponse.error(res, 'El email ya está registrado', 409, 'EMAIL_ALREADY_EXISTS');

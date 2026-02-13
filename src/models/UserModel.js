@@ -11,22 +11,21 @@ class UserModel {
    * @param {Object} userData - Datos del usuario
    * @returns {Promise<Object>} Usuario creado
    */
-  static async createUser({ email, password, nombre = null, idRol = null }) {
+  static async createUser({ email, password, nombre = null }) {
     try {
       const passwordHash = await AuthUtils.hashPassword(password);
-      
+
       const { data, error } = await supabaseAdmin
         .from('usuarios')
         .insert([{
           email: email.toLowerCase(),
           password_hash: passwordHash,
           nombre,
-          id_rol: idRol,
           activo: true,
           bloqueado: false,
           intentos_fallidos: 0
         }])
-        .select('id_usuario, email, nombre, id_rol, activo, bloqueado, fecha_creacion')
+        .select('id_usuario, email, nombre, activo, bloqueado, fecha_creacion')
         .single();
 
       if (error) {
@@ -93,7 +92,7 @@ class UserModel {
     try {
       const { data, error } = await supabaseAdmin
         .from('usuarios')
-        .select('id_usuario, email, nombre, id_rol, activo, bloqueado, intentos_fallidos, fecha_bloqueo, fecha_creacion')
+        .select('id_usuario, email, nombre, activo, bloqueado, intentos_fallidos, fecha_bloqueo, fecha_creacion')
         .eq('id_usuario', userId)
         .single();
 
@@ -118,7 +117,7 @@ class UserModel {
       const { data, error } = await supabaseAdmin
         .from('usuarios')
         .select(`
-          id_usuario, email, nombre, id_rol, activo, bloqueado, intentos_fallidos, fecha_creacion,
+          id_usuario, email, nombre, activo, bloqueado, intentos_fallidos, fecha_creacion,
           usuario_roles(
             rol_id,
             roles(
@@ -156,7 +155,7 @@ class UserModel {
     try {
       const allowedFields = ['nombre', 'activo', 'bloqueado', 'intentos_fallidos', 'fecha_bloqueo'];
       const filteredData = {};
-      
+
       Object.keys(updateData).forEach(key => {
         if (allowedFields.includes(key)) {
           filteredData[key] = updateData[key];
@@ -167,7 +166,7 @@ class UserModel {
         .from('usuarios')
         .update(filteredData)
         .eq('id_usuario', userId)
-        .select('id_usuario, email, nombre, id_rol, activo, bloqueado, intentos_fallidos, fecha_creacion')
+        .select('id_usuario, email, nombre, activo, bloqueado, intentos_fallidos, fecha_creacion')
         .single();
 
       if (error) {
@@ -191,7 +190,7 @@ class UserModel {
   static async changePassword(userId, newPassword) {
     try {
       const passwordHash = await AuthUtils.hashPassword(newPassword);
-      
+
       const { error } = await supabaseAdmin
         .from('usuarios')
         .update({ password_hash: passwordHash })
@@ -220,8 +219,8 @@ class UserModel {
       const { data, error } = await supabaseAdmin
         .from('usuario_roles')
         .insert([{
-          id_usuario: userId,
-          id_rol: rolId
+          usuario_id: userId,
+          rol_id: rolId
         }])
         .select()
         .single();
@@ -252,8 +251,8 @@ class UserModel {
       const { error } = await supabaseAdmin
         .from('usuario_roles')
         .delete()
-        .eq('id_usuario', userId)
-        .eq('id_rol', rolId);
+        .eq('usuario_id', userId)
+        .eq('rol_id', rolId);
 
       if (error) {
         throw error;
@@ -275,7 +274,7 @@ class UserModel {
   static async getUsers({ page = 1, limit = 10, search = '', includeInactive = false } = {}) {
     try {
       const offset = (page - 1) * limit;
-      
+
       let query = supabaseAdmin
         .from('usuarios')
         .select('id_usuario, email, nombre, activo, bloqueado, intentos_fallidos, fecha_creacion', { count: 'exact' });
@@ -333,6 +332,94 @@ class UserModel {
       return true;
     } catch (error) {
       logger.error('Error al desactivar usuario', error);
+      throw error;
+    }
+  }
+  /**
+   * Obtiene todos los usuarios con sus roles
+   * @returns {Promise<Array>} Lista de usuarios con roles
+   */
+  static async getAllWithRoles() {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('usuarios')
+        .select(`
+          id_usuario, email, nombre, activo, bloqueado, intentos_fallidos, fecha_creacion,
+          usuario_roles(
+            rol_id,
+            roles(
+              id_rol, nombre, descripcion
+            )
+          )
+        `)
+        .order('id_usuario');
+
+      if (error) {
+        throw error;
+      }
+
+      // Transformar la estructura de roles para cada usuario
+      const users = (data || []).map(user => ({
+        ...user,
+        roles: user.usuario_roles?.map(ur => ur.roles) || [],
+        usuario_roles: undefined // Eliminar campo temporal
+      }));
+
+      return users;
+    } catch (error) {
+      logger.error('Error al obtener usuarios con roles', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remueve todos los roles de un usuario
+   * @param {number} userId - ID del usuario
+   * @returns {Promise<boolean>} True si se removieron correctamente
+   */
+  static async removeAllRoles(userId) {
+    try {
+      const { error } = await supabaseAdmin
+        .from('usuario_roles')
+        .delete()
+        .eq('usuario_id', userId);
+
+      if (error) {
+        throw error;
+      }
+
+      logger.info('Todos los roles removidos del usuario', { userId });
+      return true;
+    } catch (error) {
+      logger.error('Error al remover todos los roles', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Elimina permanentemente un usuario
+   * @param {number} userId - ID del usuario
+   * @returns {Promise<boolean>} True si se eliminó correctamente
+   */
+  static async deleteUser(userId) {
+    try {
+      // Primero eliminar roles asociados
+      await this.removeAllRoles(userId);
+
+      // Luego eliminar el usuario
+      const { error } = await supabaseAdmin
+        .from('usuarios')
+        .delete()
+        .eq('id_usuario', userId);
+
+      if (error) {
+        throw error;
+      }
+
+      logger.info('Usuario eliminado permanentemente', { userId });
+      return true;
+    } catch (error) {
+      logger.error('Error al eliminar usuario', error);
       throw error;
     }
   }

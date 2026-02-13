@@ -29,21 +29,29 @@ class AuthService {
         throw error;
       }
 
-      // Crear usuario
-      const user = await UserModel.createUser({ 
-        email: email.toLowerCase(), 
-        password, 
-        nombre 
+      // Crear usuario INACTIVO (pendiente de aprobación)
+      const user = await UserModel.createUser({
+        email: email.toLowerCase(),
+        password,
+        nombre,
+        activo: false,  // Usuario inactivo hasta que admin lo apruebe
+        bloqueado: false
       });
 
-      // Asignar rol por defecto (cliente)
-      let clientRole = await RoleModel.findByName('cliente');
-      if (!clientRole) {
-        // Si no existe el rol cliente, crearlo
-        clientRole = await RoleModel.createRole('cliente');
-      }
-      
-      await UserModel.assignRole(user.id_usuario, clientRole.id_rol);
+      logger.info('Usuario creado (pendiente de aprobación)', {
+        userId: user.id_usuario,
+        email
+      });
+
+      // Asignar rol 5 (colaborador) por defecto
+      // Este rol indica que el usuario está pendiente de aprobación
+      const colaboradorRoleId = 5;
+      await UserModel.assignRole(user.id_usuario, colaboradorRoleId);
+
+      logger.info('Rol colaborador asignado', {
+        userId: user.id_usuario,
+        roleId: colaboradorRoleId
+      });
 
       // Crear sesión
       const session = await SessionModel.createSession({
@@ -58,7 +66,7 @@ class AuthService {
 
       // Generar tokens
       const accessToken = AuthUtils.generateJWT(
-        { 
+        {
           userId: user.id_usuario,
           email: user.email,
           roles: userWithRoles.roles?.map(r => r.nombre) || []
@@ -66,9 +74,9 @@ class AuthService {
         process.env.JWT_EXPIRES_IN || '15m'
       );
 
-      logger.info('Usuario registrado exitosamente', { 
-        userId: user.id_usuario, 
-        email: user.email 
+      logger.info('Usuario registrado exitosamente (pendiente de aprobación)', {
+        userId: user.id_usuario,
+        email: user.email
       });
 
       return {
@@ -134,8 +142,8 @@ class AuthService {
       logger.info('Resultado comparación bcrypt', { email: user.email, resultado: isValidPassword });
 
       if (!isValidPassword) {
-        logger.warn('Intento de login con contraseña incorrecta', { 
-          email, 
+        logger.warn('Intento de login con contraseña incorrecta', {
+          email,
           ip,
           hash: user.password_hash,
           passwordIntento: password
@@ -156,7 +164,7 @@ class AuthService {
 
       // Generar access token
       const accessToken = AuthUtils.generateJWT(
-        { 
+        {
           userId: user.id_usuario,
           email: user.email,
           roles: userWithRoles.roles?.map(r => r.nombre) || []
@@ -164,8 +172,8 @@ class AuthService {
         process.env.JWT_EXPIRES_IN || '15m'
       );
 
-      logger.info('Login exitoso', { 
-        userId: user.id_usuario, 
+      logger.info('Login exitoso', {
+        userId: user.id_usuario,
         email: user.email,
         sessionId: session.id_sesion
       });
@@ -199,13 +207,13 @@ class AuthService {
     try {
       // Validar sesión
       const session = await SessionModel.findByRefreshToken(refreshToken);
-      
+
       if (!session) {
         throw new Error('INVALID_REFRESH_TOKEN');
       }
 
       const isValid = await SessionModel.isValidSession(refreshToken);
-      
+
       if (!isValid) {
         throw new Error('SESSION_EXPIRED');
       }
@@ -218,7 +226,7 @@ class AuthService {
 
       // Generar nuevo access token
       const newAccessToken = AuthUtils.generateJWT(
-        { 
+        {
           userId: userWithRoles.id_usuario,
           email: userWithRoles.email,
           roles: userWithRoles.roles?.map(r => r.nombre) || []
@@ -229,7 +237,7 @@ class AuthService {
       // Actualizar última actividad
       await SessionModel.updateLastActivity(newSession.refresh_token);
 
-      logger.info('Tokens renovados', { 
+      logger.info('Tokens renovados', {
         userId: userWithRoles.id_usuario,
         sessionId: newSession.id_sesion
       });
@@ -284,10 +292,10 @@ class AuthService {
     try {
       const invalidatedCount = await SessionModel.invalidateAllUserSessions(userId, exceptSessionId);
 
-      logger.info('Logout de todas las sesiones', { 
-        userId, 
+      logger.info('Logout de todas las sesiones', {
+        userId,
         invalidatedCount,
-        exceptSessionId 
+        exceptSessionId
       });
 
       return invalidatedCount;
@@ -308,14 +316,14 @@ class AuthService {
     try {
       // Obtener usuario actual
       const user = await UserModel.findByEmail((await UserModel.findById(userId)).email);
-      
+
       if (!user) {
         throw new Error('USER_NOT_FOUND');
       }
 
       // Verificar contraseña actual
       const isCurrentValid = await AuthUtils.verifyPassword(currentPassword, user.password_hash);
-      
+
       if (!isCurrentValid) {
         throw new Error('INVALID_CURRENT_PASSWORD');
       }
@@ -351,7 +359,7 @@ class AuthService {
     try {
       const decoded = AuthUtils.verifyJWT(accessToken);
       const user = await UserModel.findWithRoles(decoded.userId);
-      
+
       if (!user || !user.activo || user.bloqueado) {
         return null;
       }
@@ -369,11 +377,11 @@ class AuthService {
   static async cleanExpiredSessions() {
     try {
       const cleanedCount = await SessionModel.cleanExpiredSessions();
-      
+
       if (cleanedCount > 0) {
         logger.info(`${cleanedCount} sesiones expiradas limpiadas automáticamente`);
       }
-      
+
       return cleanedCount;
     } catch (error) {
       logger.error('Error al limpiar sesiones expiradas', error);

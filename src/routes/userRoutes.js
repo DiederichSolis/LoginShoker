@@ -1,7 +1,7 @@
 const express = require('express');
 const UserController = require('../controllers/UserController');
 const { validateRequest } = require('../middleware/validation');
-const { 
+const {
   authenticateToken,
   requireAdmin,
   requireOwnershipOrAdmin,
@@ -79,6 +79,50 @@ router.delete('/:userId/roles/:roleId',
   ],
   validateRequest,
   UserController.removeRole
+);
+
+// Nuevas rutas para gestión de usuarios (admin only)
+router.get('/all/with-roles',
+  requireAdmin,
+  UserController.getAllWithRoles
+);
+
+router.patch('/:userId/approve',
+  requireAdmin,
+  UserController.approveUser
+);
+
+router.patch('/:userId/role',
+  requireAdmin,
+  [
+    require('express-validator').param('userId')
+      .isInt({ min: 1 })
+      .withMessage('ID de usuario inválido'),
+    require('express-validator').body('roleId')
+      .isInt({ min: 1 })
+      .withMessage('ID de rol inválido')
+  ],
+  validateRequest,
+  UserController.changeRole
+);
+
+router.patch('/:userId/toggle-active',
+  requireAdmin,
+  [
+    require('express-validator').param('userId')
+      .isInt({ min: 1 })
+      .withMessage('ID de usuario inválido'),
+    require('express-validator').body('activo')
+      .isBoolean()
+      .withMessage('El campo activo debe ser true o false')
+  ],
+  validateRequest,
+  UserController.toggleActive
+);
+
+router.delete('/:userId/permanent',
+  requireAdmin,
+  UserController.deleteUserPermanently
 );
 
 module.exports = router;
