@@ -36,6 +36,12 @@ router.get('/',
   UserController.getUsers
 );
 
+// Nuevas rutas para gestión de usuarios (admin only)
+router.get('/all/with-roles',
+  requireAdmin,
+  UserController.getAllWithRoles
+);
+
 // Rutas que requieren ser admin o dueño del recurso
 router.get('/:userId',
   requireOwnershipOrAdmin(),
@@ -76,10 +82,6 @@ router.delete('/:userId/roles/:roleId',
     require('express-validator').param('roleId')
       .isInt({ min: 1 })
       .withMessage('ID de rol inválido')
-  ],
-  validateRequest,
-  UserController.removeRole
-);
 
 // Nuevas rutas para gestión de usuarios (admin only)
 router.get('/all/with-roles',
