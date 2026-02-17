@@ -11,7 +11,7 @@ class UserModel {
    * @param {Object} userData - Datos del usuario
    * @returns {Promise<Object>} Usuario creado
    */
-  static async createUser({ email, password, nombre = null }) {
+  static async createUser({ email, password, nombre = null, activo = false, bloqueado = false }) {
     try {
       const passwordHash = await AuthUtils.hashPassword(password);
 
@@ -21,8 +21,8 @@ class UserModel {
           email: email.toLowerCase(),
           password_hash: passwordHash,
           nombre,
-          activo: true,
-          bloqueado: false,
+          activo,
+          bloqueado,
           intentos_fallidos: 0
         }])
         .select('id_usuario, email, nombre, activo, bloqueado, fecha_creacion')

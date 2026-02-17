@@ -3,6 +3,7 @@ const UserModel = require('../models/UserModel');
 const RoleModel = require('../models/RoleModel');
 const ApiResponse = require('../utils/apiResponse');
 const { asyncHandler } = require('../middleware/errorHandler');
+const logger = require('../utils/logger');
 
 /**
  * Controlador de usuarios
