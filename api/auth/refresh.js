@@ -3,9 +3,24 @@ const AuthService = require('../../src/services/AuthService');
 const logger = require('../../src/utils/logger');
 
 // Helper para manejar CORS
-function handleCORS(res) {
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
+function handleCORS(req, res) {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'https://login-shoker.vercel.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean);
+
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (origin && origin.startsWith('http://localhost:')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 }
@@ -15,7 +30,7 @@ function handleCORS(res) {
  * POST /api/auth/refresh
  */
 module.exports = async (req, res) => {
-  handleCORS(res);
+  handleCORS(req, res);
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -43,7 +58,7 @@ module.exports = async (req, res) => {
         message: error.msg,
         value: error.value
       }));
-      
+
       return res.status(400).json({
         success: false,
         message: 'Errores de validación',
@@ -66,7 +81,7 @@ module.exports = async (req, res) => {
 
   } catch (error) {
     logger.error('Error renovando tokens', error);
-    
+
     if (error.message === 'INVALID_REFRESH_TOKEN') {
       return res.status(401).json({
         success: false,
@@ -87,8 +102,8 @@ module.exports = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: process.env.NODE_ENV === 'production' 
-        ? 'Error interno del servidor' 
+      message: process.env.NODE_ENV === 'production'
+        ? 'Error interno del servidor'
         : error.message,
       code: 'INTERNAL_ERROR',
       timestamp: new Date().toISOString()

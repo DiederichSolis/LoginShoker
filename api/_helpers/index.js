@@ -9,9 +9,27 @@ const logger = require('../../src/utils/logger');
 /**
  * Configura headers CORS
  */
-function handleCORS(res) {
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
+function handleCORS(req, res) {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'https://login-shoker.vercel.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean);
+
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    // En desarrollo, permitir cualquier origen localhost
+    if (origin && origin.startsWith('http://localhost:')) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 }
@@ -57,10 +75,10 @@ async function authenticateToken(req) {
 
     // Verificar JWT
     const decoded = AuthUtils.verifyJWT(token);
-    
+
     // Obtener información completa del usuario
     const user = await UserModel.findWithRoles(decoded.userId);
-    
+
     if (!user) {
       return { error: 'Usuario no encontrado', code: 'USER_NOT_FOUND', status: 401 };
     }
@@ -76,11 +94,11 @@ async function authenticateToken(req) {
     return { user, userId: user.id, userRoles: user.roles || [] };
   } catch (error) {
     logger.error('Error en autenticación', error);
-    
+
     if (error.name === 'TokenExpiredError') {
       return { error: 'Token expirado', code: 'TOKEN_EXPIRED', status: 401 };
     }
-    
+
     if (error.name === 'JsonWebTokenError') {
       return { error: 'Token inválido', code: 'INVALID_TOKEN', status: 401 };
     }
@@ -137,7 +155,7 @@ function errorResponse(res, message = 'Error interno del servidor', statusCode =
  */
 async function runValidations(req, validations) {
   const errors = [];
-  
+
   for (let validation of validations) {
     const result = await validation.run(req);
     if (!result.isEmpty()) {
@@ -163,12 +181,12 @@ async function runValidations(req, validations) {
  * Obtiene IP real del request
  */
 function getRealIP(req) {
-  return req.headers['x-forwarded-for'] || 
-         req.headers['x-real-ip'] || 
-         req.connection?.remoteAddress || 
-         req.socket?.remoteAddress || 
-         req.ip || 
-         'unknown';
+  return req.headers['x-forwarded-for'] ||
+    req.headers['x-real-ip'] ||
+    req.connection?.remoteAddress ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    'unknown';
 }
 
 module.exports = {

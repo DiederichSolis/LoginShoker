@@ -4,9 +4,24 @@ const AuthUtils = require('../../src/utils/authUtils');
 const logger = require('../../src/utils/logger');
 
 // Helper para manejar CORS
-function handleCORS(res) {
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
+function handleCORS(req, res) {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'https://login-shoker.vercel.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean);
+
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (origin && origin.startsWith('http://localhost:')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 }
@@ -23,10 +38,10 @@ async function authenticateToken(req) {
 
     // Verificar JWT
     const decoded = AuthUtils.verifyJWT(token);
-    
+
     // Obtener información completa del usuario
     const user = await UserModel.findWithRoles(decoded.userId);
-    
+
     if (!user) {
       return { error: 'Usuario no encontrado', code: 'USER_NOT_FOUND' };
     }
@@ -42,11 +57,11 @@ async function authenticateToken(req) {
     return { user };
   } catch (error) {
     logger.error('Error en autenticación', error);
-    
+
     if (error.name === 'TokenExpiredError') {
       return { error: 'Token expirado', code: 'TOKEN_EXPIRED' };
     }
-    
+
     if (error.name === 'JsonWebTokenError') {
       return { error: 'Token inválido', code: 'INVALID_TOKEN' };
     }
@@ -60,7 +75,7 @@ async function authenticateToken(req) {
  * GET /api/auth/me
  */
 module.exports = async (req, res) => {
-  handleCORS(res);
+  handleCORS(req, res);
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -78,7 +93,7 @@ module.exports = async (req, res) => {
   try {
     // Autenticar usuario
     const authResult = await authenticateToken(req);
-    
+
     if (authResult.error) {
       return res.status(401).json({
         success: false,
@@ -112,11 +127,11 @@ module.exports = async (req, res) => {
 
   } catch (error) {
     logger.error('Error obteniendo perfil', error);
-    
+
     res.status(500).json({
       success: false,
-      message: process.env.NODE_ENV === 'production' 
-        ? 'Error interno del servidor' 
+      message: process.env.NODE_ENV === 'production'
+        ? 'Error interno del servidor'
         : error.message,
       code: 'INTERNAL_ERROR',
       timestamp: new Date().toISOString()
