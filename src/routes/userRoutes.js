@@ -37,7 +37,7 @@ router.get('/',
 );
 
 // Nuevas rutas para gestión de usuarios (admin only)
-router.get('/all/with-roles',
+router.get('/all-with-roles',
   requireAdmin,
   UserController.getAllWithRoles
 );
