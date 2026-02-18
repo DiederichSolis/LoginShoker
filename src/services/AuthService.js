@@ -67,9 +67,12 @@ class AuthService {
       // Generar tokens
       const accessToken = AuthUtils.generateJWT(
         {
+          sub: String(user.id_usuario), // Standard subject
           userId: user.id_usuario,
           email: user.email,
-          roles: userWithRoles.roles?.map(r => r.nombre) || []
+          roles: userWithRoles.roles?.map(r => r.nombre) || [],
+          aud: 'authenticated', // Standard Supabase audience
+          role: 'authenticated' // Requerido por Supabase RLS
         },
         process.env.JWT_EXPIRES_IN || '15m'
       );
@@ -165,9 +168,11 @@ class AuthService {
       // Generar access token
       const accessToken = AuthUtils.generateJWT(
         {
+          sub: String(user.id_usuario), // Standard subject
           userId: user.id_usuario,
           email: user.email,
           roles: userWithRoles.roles?.map(r => r.nombre) || [],
+          aud: 'authenticated', // Standard Supabase audience
           role: 'authenticated' // Requerido por Supabase RLS
         },
         process.env.JWT_EXPIRES_IN || '15m'
@@ -228,9 +233,12 @@ class AuthService {
       // Generar nuevo access token
       const newAccessToken = AuthUtils.generateJWT(
         {
+          sub: String(userWithRoles.id_usuario), // Standard subject
           userId: userWithRoles.id_usuario,
           email: userWithRoles.email,
-          roles: userWithRoles.roles?.map(r => r.nombre) || []
+          roles: userWithRoles.roles?.map(r => r.nombre) || [],
+          aud: 'authenticated', // Standard Supabase audience
+          role: 'authenticated' // Requerido por Supabase RLS
         },
         process.env.JWT_EXPIRES_IN || '15m'
       );
