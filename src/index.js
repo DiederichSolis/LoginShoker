@@ -40,6 +40,11 @@ app.use(cors({
       return callback(null, true);
     }
 
+    // Allow any Vercel preview URL for this project
+    if (origin.endsWith('.vercel.app') && origin.includes('shokerr')) {
+      return callback(null, true);
+    }
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
     } else {
