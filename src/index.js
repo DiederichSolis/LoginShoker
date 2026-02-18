@@ -29,6 +29,9 @@ app.use(cors({
       'https://login-shoker.vercel.app'
     ];
 
+    console.log('Incoming origin:', origin); // Debug log
+
+
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
