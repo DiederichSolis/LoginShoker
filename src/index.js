@@ -26,14 +26,13 @@ app.use(cors({
   origin: (origin, callback) => {
     const allowedOrigins = [
       'https://shokerr.vercel.app',
-      'https://login-shoker.vercel.app',
-      'https://yourdomain.com'
+      'https://login-shoker.vercel.app'
     ];
 
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // Allow any localhost or 127.0.0.1 origin (dev or prod testing)
+    // Allow localhost/127.0.0.1 ALWAYS to enable local testing against production API
     if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
       return callback(null, true);
     }
