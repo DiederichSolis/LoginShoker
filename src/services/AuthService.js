@@ -167,7 +167,8 @@ class AuthService {
         {
           userId: user.id_usuario,
           email: user.email,
-          roles: userWithRoles.roles?.map(r => r.nombre) || []
+          roles: userWithRoles.roles?.map(r => r.nombre) || [],
+          role: 'authenticated' // Requerido por Supabase RLS
         },
         process.env.JWT_EXPIRES_IN || '15m'
       );
